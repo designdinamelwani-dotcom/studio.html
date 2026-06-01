@@ -1,0 +1,736 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2870
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw5669\paperh8503\margl1440\margr1440\vieww33660\viewh18460\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 ```html\
+<!DOCTYPE html>\
+<html lang="en" class="h-full">\
+<head>\
+    <meta charset="UTF-8">\
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\
+    <title>38-Page Custom Photo Book</title>\
+    <!-- Tailwind CSS -->\
+    <script src="https://cdn.tailwindcss.com"></script>\
+    <!-- FontAwesome Icons -->\
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">\
+    <style>\
+        /* Maintain strict portrait aspect ratio of 1280:1920 (2:3) */\
+        .photo-container \{\
+\
+            aspect-ratio: 2 / 3;\
+            max-height: 85vh;\
+            max-width: 90vw;\
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);\
+        \}\
+        @media (max-aspect-ratio: 2/3) \{\
+            .photo-container \{\
+                width: 90vw;\
+                height: auto;\
+            \}\
+        \}\
+        @media (min-aspect-ratio: 2/3) \{\
+            .photo-container \{\
+                height: 85vh;\
+                width: auto;\
+            \}\
+        \}\
+        /* Custom scrollbar for gallery drawer */\
+        .custom-scrollbar::-webkit-scrollbar \{\
+            height: 6px;\
+            width: 6px;\
+        \}\
+        .custom-scrollbar::-webkit-scrollbar-track \{\
+            background: rgba(31, 41, 55, 0.5);\
+            border-radius: 10px;\
+        \}\
+        .custom-scrollbar::-webkit-scrollbar-thumb \{\
+            background: rgba(156, 163, 175, 0.4);\
+            border-radius: 10px;\
+        \}\
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover \{\
+            background: rgba(156, 163, 175, 0.7);\
+        \}\
+        /* Transition curves */\
+        .smooth-transition \{\
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);\
+        \}\
+    </style>\
+</head>\
+<body class="bg-zinc-950 text-gray-100 h-full overflow-hidden select-none font-sans flex flex-col justify-between">\
+\
+    <!-- Ambient Blurred Background (Matches active photo) -->\
+    <div id="ambient-bg" class="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-20 scale-110 pointer-events-none transition-all duration-700 ease-in-out z-0"></div>\
+    <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-zinc-950 pointer-events-none z-0"></div>\
+\
+    <!-- HEADER / CONTROLS (Fades away in Pure Mode) -->\
+    <header id="ui-header" class="relative z-10 w-full px-6 py-4 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent transition-opacity duration-300">\
+        <div class="flex items-center space-x-3">\
+            <span class="text-zinc-500 text-xs tracking-widest font-mono">BOOK CONFIG</span>\
+            <span id="loaded-count-badge" class="bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded tracking-wider">0 / 38 PHOTOS LOADED</span>\
+        </div>\
+        \
+        <!-- Controls -->\
+        <div class="flex items-center space-x-3">\
+            <!-- Setup & Upload Button -->\
+            <button id="btn-open-setup" class="p-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white transition-all text-xs flex items-center gap-1.5 shadow-lg shadow-indigo-600/30">\
+                <i class="fa-solid fa-cloud-arrow-up"></i>\
+                <span class="hidden sm:inline">PLACE PHOTOS</span>\
+            </button>\
+            <!-- Autoplay -->\
+            <button id="btn-autoplay" class="p-2.5 rounded-full bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-all text-xs flex items-center gap-1.5" title="Auto Slideshow">\
+                <i class="fa-solid fa-play"></i>\
+                <span id="autoplay-text" class="hidden sm:inline">AUTOPLAY</span>\
+            </button>\
+            <!-- Gallery Drawer Trigger -->\
+            <button id="btn-drawer" class="p-2.5 rounded-full bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-all text-xs flex items-center gap-1.5" title="All Pages">\
+                <i class="fa-solid fa-grip"></i>\
+                <span class="hidden sm:inline">PAGES</span>\
+            </button>\
+            <!-- Pure Mode Info Tip -->\
+            <button id="btn-pure-hint" class="p-2.5 rounded-full bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-all text-xs flex items-center gap-1.5" title="Pure Mode">\
+                <i class="fa-solid fa-eye-slash"></i>\
+                <span class="hidden sm:inline">PURE VIEW</span>\
+            </button>\
+        </div>\
+    </header>\
+\
+    <!-- MAIN DISPLAY AREA -->\
+    <main class="relative z-10 flex-1 flex items-center justify-center w-full h-full px-4 py-2">\
+        \
+        <!-- Left Nav Arrow (Hidden in Pure Mode) -->\
+        <button id="nav-left" class="absolute left-6 z-20 p-4 rounded-full bg-black/40 border border-zinc-800/50 text-white opacity-0 hover:opacity-100 hover:bg-black/80 transition-all duration-300 hidden md:block">\
+            <i class="fa-solid fa-chevron-left text-xl"></i>\
+        </button>\
+\
+        <!-- Dynamic Photo Stage -->\
+        <div id="photo-stage" class="photo-container relative rounded-2xl overflow-hidden cursor-pointer group bg-zinc-900 border border-zinc-800">\
+            \
+            <!-- Empty State Prompt -->\
+            <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 p-6 text-center z-20 transition-opacity duration-300">\
+                <div class="w-16 h-16 rounded-full bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center mb-4 text-indigo-400 text-2xl animate-bounce">\
+                    <i class="fa-solid fa-images"></i>\
+                </div>\
+                <h3 class="text-lg font-bold text-zinc-200">Your 38-Page Album is Empty</h3>\
+                <p class="text-xs text-zinc-400 max-w-xs mt-2 mb-6">Drag and drop your photos here, or tap below to populate your pages instantly!</p>\
+                <button onclick="document.getElementById('btn-open-setup').click()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-6 py-3 rounded-xl transition duration-300 shadow-lg shadow-indigo-600/20">\
+                    <i class="fa-solid fa-plus mr-2"></i>Load Your 38 Photos\
+                </button>\
+            </div>\
+\
+            <!-- Loader Spinner -->\
+            <div id="image-loader" class="absolute inset-0 flex items-center justify-center bg-zinc-950/90 z-10 opacity-0 pointer-events-none transition-opacity duration-300">\
+                <div class="flex flex-col items-center gap-3">\
+                    <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>\
+                    <span class="text-zinc-500 text-xs tracking-widest font-mono">LOADING PAGE <span id="loading-page-num">1</span></span>\
+                </div>\
+            </div>\
+\
+            <!-- Main Image Element -->\
+            <img id="main-photo" \
+                 class="w-full h-full object-cover select-none pointer-events-none opacity-0 transition-opacity duration-300" \
+                 src="" \
+                 alt="Page Art">\
+\
+            <!-- "Tap to reveal UI" hint for Pure Mode -->\
+            <div id="pure-mode-overlay" class="absolute inset-x-0 bottom-6 flex justify-center opacity-0 pointer-events-none transition-opacity duration-500">\
+                <span class="bg-black/80 backdrop-blur-md border border-zinc-800/80 px-4 py-2 rounded-full text-xs tracking-wider text-zinc-400 uppercase">Tap anywhere to restore UI</span>\
+            </div>\
+        </div>\
+\
+        <!-- Right Nav Arrow (Hidden in Pure Mode) -->\
+        <button id="nav-right" class="absolute right-6 z-20 p-4 rounded-full bg-black/40 border border-zinc-800/50 text-white opacity-0 hover:opacity-100 hover:bg-black/80 transition-all duration-300 hidden md:block">\
+            <i class="fa-solid fa-chevron-right text-xl"></i>\
+        </button>\
+    </main>\
+\
+    <!-- FOOTER / NAV BAR (Fades away in Pure Mode) -->\
+    <footer id="ui-footer" class="relative z-10 w-full px-6 py-6 flex flex-col items-center bg-gradient-to-t from-black/90 to-transparent transition-opacity duration-300">\
+        <!-- Progress Bar & Slider Tracker -->\
+        <div class="w-full max-w-xl flex items-center justify-between gap-4 mb-4">\
+            <span class="text-xs font-mono text-zinc-400 w-16 text-left" id="current-page-indicator">01 / 38</span>\
+            <div class="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden relative cursor-pointer" id="progress-container">\
+                <div id="progress-bar" class="absolute top-0 left-0 h-full bg-indigo-500 transition-all duration-300" style="width: 0%;"></div>\
+            </div>\
+            <span class="text-xs font-mono text-zinc-400 w-16 text-right">38 PAGES</span>\
+        </div>\
+\
+        <!-- Navigation buttons -->\
+        <div class="flex items-center space-x-6 text-xs text-zinc-400">\
+            <button onclick="changePage(-1)" class="hover:text-white px-4 py-2 rounded-lg bg-zinc-900/60 hover:bg-zinc-800 border border-zinc-800 transition">PREVIOUS</button>\
+            <span class="text-[10px] tracking-widest text-zinc-500 uppercase hidden md:inline">Swipe photo or use arrow keys</span>\
+            <button onclick="changePage(1)" class="hover:text-white px-4 py-2 rounded-lg bg-zinc-900/60 hover:bg-zinc-800 border border-zinc-800 transition">NEXT</button>\
+        </div>\
+    </footer>\
+\
+    <!-- DRAWER: ALL 38 PAGES INDEX -->\
+    <div id="drawer" class="fixed inset-x-0 bottom-0 h-52 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 z-30 transform translate-y-full transition-transform duration-300 flex flex-col">\
+        <div class="px-6 py-3 border-b border-zinc-800/80 flex justify-between items-center">\
+            <div class="flex items-center gap-2">\
+                <i class="fa-solid fa-grip text-indigo-400 text-sm"></i>\
+                <span class="text-xs font-bold tracking-wider uppercase text-zinc-300">Album Quick Index (Pages 1 - 38)</span>\
+            </div>\
+            <button id="btn-close-drawer" class="p-1 text-zinc-400 hover:text-white transition">\
+                <i class="fa-solid fa-xmark text-lg"></i>\
+            </button>\
+        </div>\
+        \
+        <!-- Thumbnail strip -->\
+        <div id="drawer-thumbnails" class="flex-1 flex gap-3 overflow-x-auto px-6 py-4 custom-scrollbar items-center">\
+            <!-- Populated dynamically -->\
+        </div>\
+    </div>\
+\
+    <!-- MODAL: MANAGE & LOAD PHOTOS -->\
+    <div id="setup-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">\
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">\
+            <!-- Modal Header -->\
+            <div class="p-6 border-b border-zinc-800 flex justify-between items-center">\
+                <div class="flex items-center gap-2.5">\
+                    <i class="fa-solid fa-images text-indigo-500 text-xl"></i>\
+                    <div>\
+                        <h2 class="text-base font-bold text-zinc-200">Load Your 38 Photos</h2>\
+                        <p class="text-[10px] text-zinc-500 font-mono">SUPPORTED ASPECT RATIO: 1280 \'d7 1920 PX</p>\
+                    </div>\
+                </div>\
+                <button id="btn-close-setup" class="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-lg transition">\
+                    <i class="fa-solid fa-xmark text-lg"></i>\
+                </button>\
+            </div>\
+\
+            <!-- Modal Content (Scrollable) -->\
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">\
+                \
+                <!-- Option 1: File Uploader Box -->\
+                <div class="bg-zinc-950/60 rounded-xl p-6 border-2 border-dashed border-zinc-800 hover:border-indigo-500/50 transition-all flex flex-col items-center justify-center text-center cursor-pointer relative" id="drop-zone">\
+                    <input type="file" id="file-uploader" multiple accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer">\
+                    <div class="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center mb-3 text-zinc-400">\
+                        <i class="fa-solid fa-folder-open text-xl"></i>\
+                    </div>\
+                    <h4 class="text-sm font-semibold text-zinc-300">Select files from your device</h4>\
+                    <p class="text-xs text-zinc-500 mt-1">Drag up to 38 photo files directly here, or click to browse</p>\
+                    <span class="mt-4 bg-indigo-600/10 text-indigo-400 text-[10px] font-bold px-2.5 py-1 rounded border border-indigo-500/20">QUICK LOAD</span>\
+                </div>\
+\
+                <!-- Page Setup Matrix -->\
+                <div>\
+                    <div class="flex justify-between items-center mb-3">\
+                        <h4 class="text-xs font-bold text-zinc-400 tracking-wider uppercase">Photo Matrix (38 Slots)</h4>\
+                        <button id="btn-clear-photos" class="text-[10px] text-red-400 hover:text-red-300 hover:underline">Clear All</button>\
+                    </div>\
+                    <!-- 38 grid boxes showing page slot allocation status -->\
+                    <div id="status-grid" class="grid grid-cols-5 sm:grid-cols-8 gap-2 bg-zinc-950/40 p-4 rounded-xl border border-zinc-800/80">\
+                        <!-- Dynamic slots are built here -->\
+                    </div>\
+                </div>\
+\
+                <!-- Quick Tutorial Box -->\
+                <div class="bg-zinc-950/80 rounded-xl p-4 border border-zinc-800 space-y-2">\
+                    <h4 class="text-xs font-bold text-zinc-300 flex items-center gap-2">\
+                        <i class="fa-solid fa-code text-indigo-400"></i>How to code local image paths permanently:\
+                    </h4>\
+                    <p class="text-[11px] text-zinc-400 leading-relaxed">\
+                        If you want the photos to load automatically every time without dragging/uploading, open this <code class="bg-zinc-800 text-zinc-200 px-1 py-0.5 rounded text-[10px]">index.html</code> file in a text editor and add your file names directly into the <code class="bg-zinc-800 text-zinc-200 px-1 py-0.5 rounded text-[10px]">MY_PHOTOS</code> Javascript array on line 214!\
+                    </p>\
+                </div>\
+            </div>\
+\
+            <!-- Modal Footer -->\
+            <div class="p-4 bg-zinc-950/80 border-t border-zinc-800 flex justify-between items-center">\
+                <button id="btn-demo-load" class="text-xs text-zinc-400 hover:text-white transition underline">\
+                    Load demo photos\
+                </button>\
+                <button id="btn-apply" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition">\
+                    Done\
+                </button>\
+            </div>\
+        </div>\
+    </div>\
+\
+    <script>\
+        /**********************************************************************************\
+         * DEVELOPER EDIT: 38 CUSTOM PHOTO PATHS CONFIGURATION\
+         * * Paste your own image paths here (e.g. "images/photo1.jpg", "portfolio/pic2.png")\
+         * Make sure you have exactly 38 files in the array if you are using your own paths!\
+         **********************************************************************************/\
+        const MY_PHOTOS = [\
+            // Line up 38 image files below:\
+            /* Page 1 */ "",\
+            /* Page 2 */ "",\
+            /* Page 3 */ "",\
+            /* Page 4 */ "",\
+            /* Page 5 */ "",\
+            /* Page 6 */ "",\
+            /* Page 7 */ "",\
+            /* Page 8 */ "",\
+            /* Page 9 */ "",\
+            /* Page 10 */ "",\
+            /* Page 11 */ "",\
+            /* Page 12 */ "",\
+            /* Page 13 */ "",\
+            /* Page 14 */ "",\
+            /* Page 15 */ "",\
+            /* Page 16 */ "",\
+            /* Page 17 */ "",\
+            /* Page 18 */ "",\
+            /* Page 19 */ "",\
+            /* Page 20 */ "",\
+            /* Page 21 */ "",\
+            /* Page 22 */ "",\
+            /* Page 23 */ "",\
+            /* Page 24 */ "",\
+            /* Page 25 */ "",\
+            /* Page 26 */ "",\
+            /* Page 27 */ "",\
+            /* Page 28 */ "",\
+            /* Page 29 */ "",\
+            /* Page 30 */ "",\
+            /* Page 31 */ "",\
+            /* Page 32 */ "",\
+            /* Page 33 */ "",\
+            /* Page 34 */ "",\
+            /* Page 35 */ "",\
+            /* Page 36 */ "",\
+            /* Page 37 */ "",\
+            /* Page 38 */ ""\
+        ];\
+\
+        // Demo fallback photos to load beautiful placeholder artwork when the user is testing the layout\
+        const DEMO_PHOTOS = [\
+            "photo-1507525428034-b723cf961d3e", "photo-1470071459604-3b5ec3a7fe05", "photo-1506744038136-46273834b3fb",\
+            "photo-1447752875215-b2761acb3c5d", "photo-1469474968028-56623f02e42e", "photo-1472214222541-d510753a4907",\
+            "photo-1513836279014-a89f7a76ae86", "photo-1441974231531-c6227db76b6e", "photo-1501854140801-50d01698950b",\
+            "photo-1461749280684-dccba630e2f6", "photo-1490730141103-6cac27aaab94", "photo-1541701494587-cb58502866ab",\
+            "photo-1550684848-fac1c5b4e853", "photo-1518531933037-91b2f5f229cc", "photo-1502082553048-f009c37129b9",\
+            "photo-1510784722466-f2aa9c52faa6", "photo-1433832597046-4f10e10ac764", "photo-1505761671935-60b3a742798e",\
+            "photo-1519681393784-d120267933ba", "photo-1486916856992-e4db22c8df33", "photo-1518173946687-a4c8a383392e",\
+            "photo-1534447677768-be436bb09401", "photo-1509198397868-475647b2a1e5", "photo-1475924156734-496f6cac6ec1",\
+            "photo-1528459801416-a9e53bbf4e17", "photo-1500627869374-13cd993b1115", "photo-1511497584788-876760111969",\
+            "photo-1504608524841-42fe6f032b4b", "photo-1513151233558-d860c5398176", "photo-1508739773434-c26b3d09e071",\
+            "photo-1518709268805-4e9042af9f23", "photo-1493612276216-ee3925520721", "photo-1523712999610-f77fbcfc3843",\
+            "photo-1500964757637-c85e8a162699", "photo-1533105079780-92b9be482077", "photo-1518495973542-4542c06a5843",\
+            "photo-1470240731273-7821a6eeb6bd", "photo-1516259762381-22954d7d3ad2"\
+        ];\
+\
+        // Core App State variables\
+        const TOTAL_PAGES = 38;\
+        let photoPool = Array(TOTAL_PAGES).fill(null); // Keeps track of currently loaded photos\
+        let currentPage = 1;\
+        let pureMode = false;\
+        let isPlaying = false;\
+        let playInterval = null;\
+\
+        // Fetching elements\
+        const mainPhoto = document.getElementById('main-photo');\
+        const emptyState = document.getElementById('empty-state');\
+        const imageLoader = document.getElementById('image-loader');\
+        const loadingPageNum = document.getElementById('loading-page-num');\
+        const ambientBg = document.getElementById('ambient-bg');\
+        const currentPageIndicator = document.getElementById('current-page-indicator');\
+        const progressBar = document.getElementById('progress-bar');\
+        const progressContainer = document.getElementById('progress-container');\
+        const loadedCountBadge = document.getElementById('loaded-count-badge');\
+\
+        const setupModal = document.getElementById('setup-modal');\
+        const fileUploader = document.getElementById('file-uploader');\
+        const dropZone = document.getElementById('drop-zone');\
+\
+        // Check if MY_PHOTOS array was configured by looking for any non-empty paths\
+        function detectHardcodedPhotos() \{\
+            let found = false;\
+            for (let i = 0; i < TOTAL_PAGES; i++) \{\
+                if (MY_PHOTOS[i] && MY_PHOTOS[i].trim() !== "") \{\
+                    photoPool[i] = MY_PHOTOS[i];\
+                    found = true;\
+                \}\
+            \}\
+            return found;\
+        \}\
+\
+        // Initialize and render page slots matrix inside modal setup\
+        function renderStatusGrid() \{\
+            const grid = document.getElementById('status-grid');\
+            grid.innerHTML = '';\
+            let loadedCount = 0;\
+\
+            for (let i = 0; i < TOTAL_PAGES; i++) \{\
+                const hasPhoto = photoPool[i] !== null;\
+                if (hasPhoto) loadedCount++;\
+\
+                const slot = document.createElement('div');\
+                slot.className = `aspect-[2/3] rounded-lg border text-center flex flex-col justify-between p-1 relative overflow-hidden transition-all duration-300 $\{\
+                    hasPhoto \
+                    ? 'border-indigo-500 bg-indigo-950/20 text-indigo-200' \
+                    : 'border-zinc-800 bg-zinc-900/60 text-zinc-500'\
+                \}`;\
+\
+                // Background thumbnail preview if local file/photo is allocated\
+                if (hasPhoto) \{\
+                    const bgPrev = document.createElement('div');\
+                    bgPrev.className = 'absolute inset-0 opacity-20 bg-cover bg-center';\
+                    bgPrev.style.backgroundImage = `url('$\{photoPool[i]\}')`;\
+                    slot.appendChild(bgPrev);\
+                \}\
+\
+                const pageNum = document.createElement('span');\
+                pageNum.className = 'relative z-10 text-[9px] font-mono font-bold';\
+                pageNum.textContent = i + 1;\
+\
+                const statusIcon = document.createElement('div');\
+                statusIcon.className = 'relative z-10 flex justify-center pb-0.5';\
+                statusIcon.innerHTML = hasPhoto \
+                    ? '<i class="fa-solid fa-circle-check text-[10px] text-indigo-400"></i>' \
+                    : '<i class="fa-solid fa-circle-plus text-[10px] text-zinc-700"></i>';\
+\
+                slot.appendChild(pageNum);\
+                slot.appendChild(statusIcon);\
+\
+                // Make individual page slots clickable to quickly replace that specific photo\
+                slot.addEventListener('click', () => \{\
+                    const fileInput = document.createElement('input');\
+                    fileInput.type = 'file';\
+                    fileInput.accept = 'image/*';\
+                    fileInput.onchange = (e) => \{\
+                        const file = e.target.files[0];\
+                        if (file) \{\
+                            photoPool[i] = URL.createObjectURL(file);\
+                            renderStatusGrid();\
+                            updateActivePageDisplay();\
+                        \}\
+                    \};\
+                    fileInput.click();\
+                \});\
+\
+                grid.appendChild(slot);\
+            \}\
+\
+            // Update UI Counters\
+            loadedCountBadge.textContent = `$\{loadedCount\} / 38 PHOTOS LOADED`;\
+            if (loadedCount > 0) \{\
+                emptyState.classList.add('opacity-0', 'pointer-events-none');\
+                mainPhoto.classList.remove('opacity-0');\
+            \} else \{\
+                emptyState.classList.remove('opacity-0', 'pointer-events-none');\
+                mainPhoto.classList.add('opacity-0');\
+            \}\
+        \}\
+\
+        // Setup drop-zone handlers\
+        fileUploader.addEventListener('change', (e) => \{\
+            handleUploadedFiles(e.target.files);\
+        \});\
+\
+        // Drag events for drag and drop\
+        ['dragenter', 'dragover'].forEach(eventName => \{\
+            dropZone.addEventListener(eventName, (e) => \{\
+                e.preventDefault();\
+                dropZone.classList.add('border-indigo-500', 'bg-indigo-950/20');\
+            \}, false);\
+        \});\
+\
+        ['dragleave', 'drop'].forEach(eventName => \{\
+            dropZone.addEventListener(eventName, (e) => \{\
+                e.preventDefault();\
+                dropZone.classList.remove('border-indigo-500', 'bg-indigo-950/20');\
+            \}, false);\
+        \});\
+\
+        dropZone.addEventListener('drop', (e) => \{\
+            const dt = e.dataTransfer;\
+            const files = dt.files;\
+            handleUploadedFiles(files);\
+        \});\
+\
+        // Processes files dropped or selected inside picker\
+        function handleUploadedFiles(files) \{\
+            if (files.length === 0) return;\
+\
+            // Fill empty slots sequentially with uploaded images\
+            let fileIndex = 0;\
+            for (let i = 0; i < TOTAL_PAGES; i++) \{\
+                if (fileIndex >= files.length) break;\
+                \
+                // If a slot is empty, place the photo here\
+                if (photoPool[i] === null) \{\
+                    photoPool[i] = URL.createObjectURL(files[fileIndex]);\
+                    fileIndex++;\
+                \}\
+            \}\
+\
+            // If user selects more or has overflow, fill slots sequentially from the beginning\
+            if (fileIndex < files.length) \{\
+                for (let i = 0; i < TOTAL_PAGES; i++) \{\
+                    if (fileIndex >= files.length) break;\
+                    photoPool[i] = URL.createObjectURL(files[fileIndex]);\
+                    fileIndex++;\
+                \}\
+            \}\
+\
+            renderStatusGrid();\
+            initCatalog();\
+            updateActivePageDisplay();\
+        \}\
+\
+        // Clears out all photos to start over\
+        document.getElementById('btn-clear-photos').addEventListener('click', () => \{\
+            photoPool = Array(TOTAL_PAGES).fill(null);\
+            renderStatusGrid();\
+            initCatalog();\
+            updateActivePageDisplay();\
+        \});\
+\
+        // Demo Loader\
+        document.getElementById('btn-demo-load').addEventListener('click', () => \{\
+            for (let i = 0; i < TOTAL_PAGES; i++) \{\
+                const id = DEMO_PHOTOS[i % DEMO_PHOTOS.length];\
+                photoPool[i] = `https://images.unsplash.com/$\{id\}?auto=format&fit=crop&w=1280&h=1920&q=85`;\
+            \}\
+            renderStatusGrid();\
+            initCatalog();\
+            updateActivePageDisplay();\
+        \});\
+\
+        // Main image loading controller\
+        function updateActivePageDisplay() \{\
+            const activePhotoUrl = photoPool[currentPage - 1];\
+\
+            if (!activePhotoUrl) \{\
+                emptyState.classList.remove('opacity-0', 'pointer-events-none');\
+                mainPhoto.classList.add('opacity-0');\
+                ambientBg.style.backgroundImage = 'none';\
+                return;\
+            \}\
+\
+            emptyState.classList.add('opacity-0', 'pointer-events-none');\
+            mainPhoto.classList.remove('opacity-0');\
+            \
+            // Activate screen preloader\
+            imageLoader.classList.remove('opacity-0', 'pointer-events-none');\
+            imageLoader.classList.add('opacity-100');\
+            loadingPageNum.textContent = currentPage;\
+\
+            const preloader = new Image();\
+            preloader.src = activePhotoUrl;\
+            preloader.onload = () => \{\
+                mainPhoto.src = activePhotoUrl;\
+                ambientBg.style.backgroundImage = `url('$\{activePhotoUrl\}')`;\
+                \
+                // Deactivate preloader\
+                imageLoader.classList.remove('opacity-100');\
+                imageLoader.classList.add('opacity-0', 'pointer-events-none');\
+            \};\
+\
+            // Update bottom layout indicators\
+            const formattedPage = String(currentPage).padStart(2, '0');\
+            currentPageIndicator.textContent = `$\{formattedPage\} / 38`;\
+            \
+            const percent = (currentPage / TOTAL_PAGES) * 100;\
+            progressBar.style.width = `$\{percent\}%`;\
+\
+            // Active State border selection highlights inside slide drawer\
+            document.querySelectorAll('.thumbnail-item').forEach((thumb, idx) => \{\
+                if (idx === (currentPage - 1)) \{\
+                    thumb.classList.add('border-indigo-500', 'scale-105', 'ring-2', 'ring-indigo-500/50');\
+                    thumb.scrollIntoView(\{ behavior: 'smooth', block: 'nearest', inline: 'center' \});\
+                \} else \{\
+                    thumb.classList.remove('border-indigo-500', 'scale-105', 'ring-2', 'ring-indigo-500/50');\
+                \}\
+            \});\
+\
+            // Smooth background preload adjacent pages\
+            const nextIdx = (currentPage) % TOTAL_PAGES;\
+            const prevIdx = (currentPage - 2 + TOTAL_PAGES) % TOTAL_PAGES;\
+            if (photoPool[nextIdx]) new Image().src = photoPool[nextIdx];\
+            if (photoPool[prevIdx]) new Image().src = photoPool[prevIdx];\
+        \}\
+\
+        function changePage(direction) \{\
+            currentPage += direction;\
+            if (currentPage < 1) currentPage = TOTAL_PAGES;\
+            if (currentPage > TOTAL_PAGES) currentPage = 1;\
+            updateActivePageDisplay();\
+        \}\
+\
+        // Toggle "Pure View" mode\
+        function togglePureMode(forceState = null) \{\
+            pureMode = forceState !== null ? forceState : !pureMode;\
+\
+            const uiHeader = document.getElementById('ui-header');\
+            const uiFooter = document.getElementById('ui-footer');\
+            const navLeft = document.getElementById('nav-left');\
+            const navRight = document.getElementById('nav-right');\
+            const pureOverlay = document.getElementById('pure-mode-overlay');\
+\
+            if (pureMode) \{\
+                uiHeader.classList.add('opacity-0', 'pointer-events-none');\
+                uiFooter.classList.add('opacity-0', 'pointer-events-none');\
+                navLeft.classList.add('opacity-0', 'pointer-events-none');\
+                navRight.classList.add('opacity-0', 'pointer-events-none');\
+                pureOverlay.classList.remove('opacity-0');\
+                pureOverlay.classList.add('opacity-100');\
+                closeDrawer();\
+                \
+                setTimeout(() => \{\
+                    pureOverlay.classList.add('opacity-0');\
+                \}, 3000);\
+            \} else \{\
+                uiHeader.classList.remove('opacity-0', 'pointer-events-none');\
+                uiFooter.classList.remove('opacity-0', 'pointer-events-none');\
+                navLeft.classList.remove('opacity-0', 'pointer-events-none');\
+                navRight.classList.remove('opacity-0', 'pointer-events-none');\
+                pureOverlay.classList.add('opacity-0');\
+                pureOverlay.classList.remove('opacity-100');\
+            \}\
+        \}\
+\
+        // Drawer slider controllers\
+        function toggleDrawer() \{\
+            document.getElementById('drawer').classList.toggle('translate-y-full');\
+        \}\
+\
+        function closeDrawer() \{\
+            document.getElementById('drawer').classList.add('translate-y-full');\
+        \}\
+\
+        // Slideshow loop\
+        function toggleAutoplay() \{\
+            const btn = document.getElementById('btn-autoplay');\
+            const icon = btn.querySelector('i');\
+            const text = document.getElementById('autoplay-text');\
+\
+            if (isPlaying) \{\
+                clearInterval(playInterval);\
+                isPlaying = false;\
+                icon.className = "fa-solid fa-play";\
+                text.textContent = "AUTOPLAY";\
+                btn.classList.remove('bg-indigo-600', 'text-white');\
+                btn.classList.add('bg-zinc-900/80', 'text-zinc-400');\
+            \} else \{\
+                isPlaying = true;\
+                icon.className = "fa-solid fa-pause animate-pulse";\
+                text.textContent = "PLAYING";\
+                btn.classList.remove('bg-zinc-900/80', 'text-zinc-400');\
+                btn.classList.add('bg-indigo-600', 'text-white');\
+                \
+                playInterval = setInterval(() => \{\
+                    changePage(1);\
+                \}, 4000);\
+            \}\
+        \}\
+\
+        // Populate bottom jump-scroll strip drawer\
+        function initCatalog() \{\
+            const container = document.getElementById('drawer-thumbnails');\
+            container.innerHTML = '';\
+\
+            for (let i = 0; i < TOTAL_PAGES; i++) \{\
+                const wrapper = document.createElement('div');\
+                wrapper.className = 'thumbnail-item relative flex-shrink-0 w-20 h-28 bg-zinc-950 rounded-lg overflow-hidden cursor-pointer border border-zinc-800 transition-all duration-300';\
+                \
+                const hasPhoto = photoPool[i] !== null;\
+                if (hasPhoto) \{\
+                    const img = document.createElement('img');\
+                    img.src = photoPool[i];\
+                    img.className = 'w-full h-full object-cover';\
+                    wrapper.appendChild(img);\
+                \} else \{\
+                    const placeholderIcon = document.createElement('div');\
+                    placeholderIcon.className = 'w-full h-full flex items-center justify-center bg-zinc-900 text-zinc-700';\
+                    placeholderIcon.innerHTML = '<i class="fa-solid fa-plus text-xs"></i>';\
+                    wrapper.appendChild(placeholderIcon);\
+                \}\
+\
+                const label = document.createElement('div');\
+                label.className = 'absolute bottom-1 right-1 bg-black/80 px-1 py-0.5 rounded text-[8px] font-mono text-zinc-400';\
+                label.textContent = i + 1;\
+\
+                wrapper.appendChild(label);\
+                wrapper.addEventListener('click', () => \{\
+                    currentPage = i + 1;\
+                    updateActivePageDisplay();\
+                \});\
+\
+                container.appendChild(wrapper);\
+            \}\
+        \}\
+\
+        // SWIPE HANDLERS\
+        let startX = 0;\
+        let endX = 0;\
+        const stage = document.getElementById('photo-stage');\
+\
+        stage.addEventListener('touchstart', e => \{\
+            startX = e.changedTouches[0].screenX;\
+        \}, \{ passive: true \});\
+\
+        stage.addEventListener('touchend', e => \{\
+            endX = e.changedTouches[0].screenX;\
+            const threshold = 50;\
+            if (endX < startX - threshold) changePage(1);\
+            if (endX > startX + threshold) changePage(-1);\
+        \}, \{ passive: true \});\
+\
+        // KEYBOARD ACTIONS\
+        document.addEventListener('keydown', e => \{\
+            if (e.key === 'ArrowRight' || e.key === ' ') changePage(1);\
+            if (e.key === 'ArrowLeft') changePage(-1);\
+            if (e.key === 'Escape') \{\
+                togglePureMode(false);\
+                closeModal();\
+            \}\
+        \});\
+\
+        // CLICK PROGRESS JUMP\
+        progressContainer.addEventListener('click', e => \{\
+            const rect = progressContainer.getBoundingClientRect();\
+            const pos = (e.clientX - rect.left) / rect.width;\
+            currentPage = Math.min(TOTAL_PAGES, Math.max(1, Math.round(pos * TOTAL_PAGES)));\
+            updateActivePageDisplay();\
+        \});\
+\
+        // MODAL TOGGLES\
+        const openSetupBtn = document.getElementById('btn-open-setup');\
+        const closeSetupBtn = document.getElementById('btn-close-setup');\
+        const applyBtn = document.getElementById('btn-apply');\
+\
+        function openModal() \{\
+            setupModal.classList.remove('opacity-0', 'pointer-events-none');\
+            setupModal.classList.add('opacity-100');\
+        \}\
+\
+        function closeModal() \{\
+            setupModal.classList.remove('opacity-100');\
+            setupModal.classList.add('opacity-0', 'pointer-events-none');\
+        \}\
+\
+        openSetupBtn.addEventListener('click', openModal);\
+        closeSetupBtn.addEventListener('click', closeModal);\
+        applyBtn.addEventListener('click', closeModal);\
+\
+        // BUTTON LISTENERS\
+        document.getElementById('btn-autoplay').addEventListener('click', toggleAutoplay);\
+        document.getElementById('btn-drawer').addEventListener('click', toggleDrawer);\
+        document.getElementById('btn-close-drawer').addEventListener('click', closeDrawer);\
+        document.getElementById('btn-pure-hint').addEventListener('click', () => togglePureMode());\
+        stage.addEventListener('click', () => togglePureMode());\
+\
+        // On Load Configuration\
+        window.onload = () => \{\
+            const hasLocalPaths = detectHardcodedPhotos();\
+            initCatalog();\
+            renderStatusGrid();\
+            \
+            if (hasLocalPaths) \{\
+                updateActivePageDisplay();\
+            \} else \{\
+                // If completely blank, pop open the file placement window on first load to guide them!\
+                openModal();\
+            \}\
+        \};\
+    </script>\
+</body>\
+</html>\
+\
+```}
